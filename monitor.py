@@ -1,5 +1,6 @@
 """Hardware stats collection and websocket broadcasting for Advanced Monitor."""
 
+import gc
 import json
 import logging
 import os
@@ -168,3 +169,34 @@ async def patch_config(request):
         except (TypeError, ValueError):
             return web.json_response({"error": "invalid rate"}, status=400)
     return web.json_response({"rate": monitor.rate})
+
+
+@routes.post("/advanced_monitor/free")
+async def post_free(request):
+    try:
+        body = json.loads(await request.text())
+    except Exception:
+        return web.json_response({"error": "invalid json"}, status=400)
+    action = body.get("action")
+
+    if action == "unload_models":
+        # Processed by the prompt worker between jobs — same mechanism as
+        # ComfyUI's native "Unload Models" button, so it's execution-safe.
+        PromptServer.instance.prompt_queue.set_flag("unload_models", True)
+    elif action == "purge_ram":
+        # free_memory resets the executor's node/output cache (RAM) and
+        # implies a model unload + gc in the prompt worker.
+        PromptServer.instance.prompt_queue.set_flag("unload_models", True)
+        PromptServer.instance.prompt_queue.set_flag("free_memory", True)
+    elif action == "purge_vram":
+        try:
+            import comfy.model_management as mm
+
+            gc.collect()
+            mm.soft_empty_cache()
+        except Exception as e:
+            log.warning("Advanced Monitor: VRAM purge failed: %s", e)
+            return web.json_response({"error": str(e)}, status=500)
+    else:
+        return web.json_response({"error": "unknown action"}, status=400)
+    return web.json_response({"ok": True, "action": action})

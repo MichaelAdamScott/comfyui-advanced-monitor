@@ -127,6 +127,60 @@ const STYLE = `
   opacity: 0.65;
   margin-bottom: 2px;
 }
+.cam-tooltip .cam-tip-action {
+  margin-top: 4px;
+  font-size: 9.5px;
+  opacity: 0.5;
+}
+.cam-pill.cam-clickable {
+  cursor: pointer;
+}
+.cam-pill.cam-clickable:active {
+  transform: scale(0.97);
+}
+.cam-menu {
+  position: fixed;
+  z-index: 10001;
+  min-width: 220px;
+  padding: 5px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--comfy-menu-bg, #16161a) 90%, black 10%);
+  border: 1px solid var(--border-color, #4e4e55);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+}
+.cam-menu .cam-menu-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  color: var(--input-text, #e8e8ec);
+  padding: 5px 9px 3px 9px;
+}
+.cam-menu .cam-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--input-text, #e8e8ec);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.cam-menu .cam-menu-item:hover {
+  background: color-mix(in srgb, var(--input-text, #e8e8ec) 10%, transparent);
+}
+.cam-menu .cam-menu-hint {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.55;
+  margin-top: 1px;
+}
 `;
 
 // ---------------------------------------------------------------------------
@@ -163,7 +217,7 @@ function shortGpuName(name) {
 const tooltip = document.createElement("div");
 tooltip.className = "cam-tooltip";
 
-function showTooltip(anchor, title, body) {
+function showTooltip(anchor, title, body, hasActions = false) {
   if (!tooltip.isConnected) document.body.appendChild(tooltip);
   tooltip.innerHTML = "";
   const t = document.createElement("div");
@@ -172,6 +226,12 @@ function showTooltip(anchor, title, body) {
   const b = document.createElement("div");
   b.textContent = body;
   tooltip.append(t, b);
+  if (hasActions) {
+    const a = document.createElement("div");
+    a.className = "cam-tip-action";
+    a.textContent = "Click for actions";
+    tooltip.appendChild(a);
+  }
   const rect = anchor.getBoundingClientRect();
   tooltip.style.left = "0px";
   tooltip.style.top = "0px";
@@ -190,14 +250,130 @@ function hideTooltip() {
 }
 
 // ---------------------------------------------------------------------------
+// Click-action menu (VRAM / RAM purge)
+// ---------------------------------------------------------------------------
+
+function toast(severity, summary, detail) {
+  try {
+    app.extensionManager.toast.add({ severity, summary, detail, life: 3500 });
+  } catch {
+    console.log(`[AdvancedMonitor] ${summary}: ${detail}`);
+  }
+}
+
+async function runAction(action, label) {
+  try {
+    const res = await api.fetchApi("/advanced_monitor/free", {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    toast(
+      "success",
+      label,
+      action === "purge_vram"
+        ? "CUDA cache emptied"
+        : "Applied (runs between jobs if one is active)"
+    );
+  } catch (err) {
+    toast("error", `${label} failed`, String(err?.message ?? err));
+  }
+}
+
+let openMenuEl = null;
+
+function closeMenu() {
+  if (openMenuEl) {
+    openMenuEl.remove();
+    openMenuEl = null;
+  }
+}
+
+document.addEventListener(
+  "mousedown",
+  (e) => {
+    if (openMenuEl && !openMenuEl.contains(e.target)) closeMenu();
+  },
+  true
+);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeMenu();
+});
+
+function openActionMenu(pill, actions) {
+  closeMenu();
+  hideTooltip();
+  const menu = document.createElement("div");
+  menu.className = "cam-menu";
+
+  const title = document.createElement("div");
+  title.className = "cam-menu-title";
+  title.textContent = pill.tipTitle;
+  menu.appendChild(title);
+
+  for (const a of actions) {
+    const btn = document.createElement("button");
+    btn.className = "cam-menu-item";
+    const label = document.createElement("span");
+    label.textContent = a.label;
+    const hint = document.createElement("span");
+    hint.className = "cam-menu-hint";
+    hint.textContent = a.hint;
+    btn.append(label, hint);
+    btn.addEventListener("click", () => {
+      closeMenu();
+      runAction(a.action, a.label);
+    });
+    menu.appendChild(btn);
+  }
+
+  document.body.appendChild(menu);
+  const rect = pill.el.getBoundingClientRect();
+  const mw = menu.offsetWidth;
+  const x = Math.min(
+    Math.max(6, rect.left + rect.width / 2 - mw / 2),
+    window.innerWidth - mw - 6
+  );
+  menu.style.left = `${x}px`;
+  menu.style.top = `${rect.bottom + 7}px`;
+  openMenuEl = menu;
+}
+
+const VRAM_ACTIONS = [
+  {
+    label: "Unload models",
+    hint: "Move all loaded models out of VRAM",
+    action: "unload_models",
+  },
+  {
+    label: "Purge VRAM cache",
+    hint: "Empty the CUDA allocator cache",
+    action: "purge_vram",
+  },
+];
+
+const RAM_ACTIONS = [
+  {
+    label: "Purge RAM",
+    hint: "Clear execution cache, unload models & garbage-collect",
+    action: "purge_ram",
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Monitor pill
 // ---------------------------------------------------------------------------
 
 class MonitorPill {
-  constructor(label, color, { unit = "%", dangerAt = 90, wide = false } = {}) {
+  constructor(
+    label,
+    color,
+    { unit = "%", dangerAt = 90, wide = false, actions = null } = {}
+  ) {
     this.color = color;
     this.unit = unit;
     this.dangerAt = dangerAt;
+    this.actions = actions;
     this.history = new Array(HISTORY_LEN).fill(0);
     this.value = -1;
     this.tipTitle = label;
@@ -224,10 +400,24 @@ class MonitorPill {
     this.barEl.className = "cam-bar";
     this.el.appendChild(this.barEl);
 
-    this.el.addEventListener("mouseenter", () =>
-      showTooltip(this.el, this.tipTitle, this.tipBody || "No data yet")
-    );
+    this.el.addEventListener("mouseenter", () => {
+      if (openMenuEl) return;
+      showTooltip(
+        this.el,
+        this.tipTitle,
+        this.tipBody || "No data yet",
+        !!this.actions
+      );
+    });
     this.el.addEventListener("mouseleave", hideTooltip);
+
+    if (this.actions) {
+      this.el.classList.add("cam-clickable");
+      this.el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openActionMenu(this, this.actions);
+      });
+    }
   }
 
   setVisible(visible) {
@@ -317,7 +507,7 @@ container.className = "cam-group";
 
 const pills = {
   cpu: new MonitorPill("CPU", COLORS.cpu),
-  ram: new MonitorPill("RAM", COLORS.ram),
+  ram: new MonitorPill("RAM", COLORS.ram, { actions: RAM_ACTIONS }),
   hdd: new MonitorPill("DISK", COLORS.hdd, { dangerAt: 95 }),
 };
 container.append(pills.cpu.el, pills.ram.el);
@@ -338,7 +528,9 @@ function ensureGpuPills(gpus) {
     if (dupes) label = `${label} #${gpu.index}`;
     const set = {
       util: new MonitorPill(label, COLORS.gpu, { wide: true }),
-      vram: new MonitorPill(`VRAM${suffix}`, COLORS.vram),
+      vram: new MonitorPill(`VRAM${suffix}`, COLORS.vram, {
+        actions: VRAM_ACTIONS,
+      }),
       temp: new MonitorPill(`TEMP${suffix}`, COLORS.temp, {
         unit: "°",
         dangerAt: 85,

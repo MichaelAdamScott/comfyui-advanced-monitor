@@ -21,6 +21,13 @@ Monitors turn red when they hit dangerous levels (90% usage / 85 °C):
 
 ![Monitors turning red at warning levels](assets/warning-levels.gif)
 
+**Click the VRAM or RAM pill** for one-click memory actions:
+
+- **VRAM** — *Unload models* (moves all loaded models out of VRAM, same as ComfyUI's native unload) or *Purge VRAM cache* (empties the CUDA allocator cache)
+- **RAM** — *Purge RAM* (clears ComfyUI's execution cache, unloads models, and garbage-collects)
+
+Unload/purge requests are handled by ComfyUI's prompt worker, so they're always execution-safe — if a job is running, they apply as soon as it finishes.
+
 Multiple NVIDIA GPUs each get their own set of pills. No workflow nodes are added — this package is purely the toolbar UI plus a tiny stats stream.
 
 ## Install
