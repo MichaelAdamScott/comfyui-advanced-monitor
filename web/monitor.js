@@ -289,8 +289,10 @@ function closeMenu() {
   }
 }
 
+// Capture-phase pointerdown so the menu closes on a click anywhere —
+// including the node graph canvas, which swallows regular mouse events.
 document.addEventListener(
-  "mousedown",
+  "pointerdown",
   (e) => {
     if (openMenuEl && !openMenuEl.contains(e.target)) closeMenu();
   },
@@ -299,6 +301,7 @@ document.addEventListener(
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeMenu();
 });
+window.addEventListener("blur", closeMenu);
 
 function openActionMenu(pill, actions) {
   closeMenu();
