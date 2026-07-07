@@ -9,6 +9,6 @@ dependencies = ["psutil", "nvidia-ml-py"]
 Repository = "https://github.com/MichaelAdamScott/comfyui-advanced-monitor"
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "michaelscott"
 DisplayName = "Advanced Monitor"
 Icon = ""
