@@ -24,7 +24,12 @@ Monitors turn red when they hit dangerous levels (90% usage / 85 °C):
 **Click the VRAM or RAM pill** for one-click memory actions:
 
 - **VRAM** — *Unload models* (moves all loaded models out of VRAM, same as ComfyUI's native unload) or *Purge VRAM cache* (empties the CUDA allocator cache)
+
+![Purging VRAM from the toolbar](assets/purge-vram.gif)
+
 - **RAM** — *Purge RAM* (clears ComfyUI's execution cache, unloads models, and garbage-collects)
+
+![Purging RAM from the toolbar](assets/purge-ram.gif)
 
 Unload/purge requests are handled by ComfyUI's prompt worker, so they're always execution-safe — if a job is running, they apply as soon as it finishes.
 
