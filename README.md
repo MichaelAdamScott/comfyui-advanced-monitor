@@ -2,6 +2,8 @@
 
 Sleek, modern resource monitors for the ComfyUI toolbar — a lightweight, actively-maintainable replacement for the resource monitor portion of the deprecated ComfyUI-Crystools.
 
+![Live resource monitor pills in the ComfyUI toolbar](assets/pill-view.gif)
+
 Each monitor is a compact "pill" in the top menu bar with a **live sparkline**, a color-coded usage bar, and a hover tooltip with exact values:
 
 - **CPU** — utilization %
@@ -11,7 +13,15 @@ Each monitor is a compact "pill" in the top menu bar with a **live sparkline**, 
 - **TEMP** — GPU core temperature °C
 - **DISK** — usage of the drive ComfyUI is installed on (hidden by default)
 
-Monitors turn red when they hit dangerous levels (90% usage / 85 °C). Multiple NVIDIA GPUs each get their own set of pills. No workflow nodes are added — this package is purely the toolbar UI plus a tiny stats stream.
+Hover any pill for exact numbers — used / total GB and the full GPU model name:
+
+![Hover tooltips showing exact values](assets/hover-effects.gif)
+
+Monitors turn red when they hit dangerous levels (90% usage / 85 °C):
+
+![Monitors turning red at warning levels](assets/warning-levels.gif)
+
+Multiple NVIDIA GPUs each get their own set of pills. No workflow nodes are added — this package is purely the toolbar UI plus a tiny stats stream.
 
 ## Install
 
