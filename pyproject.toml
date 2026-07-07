@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-advanced-monitor"
+description = "Sleek, modern resource monitors (CPU / RAM / GPU / VRAM / Temp / Disk) for the ComfyUI toolbar, with live sparklines."
+version = "1.0.0"
+license = { text = "MIT" }
+dependencies = ["psutil", "nvidia-ml-py"]
+
+[project.urls]
+Repository = "https://github.com/MichaelAdamScott/comfyui-advanced-monitor"
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "Advanced Monitor"
+Icon = ""
