@@ -61,7 +61,3 @@ Open ComfyUI **Settings → AdvancedMonitor**:
 
 - `monitor.py` runs a daemon thread that samples stats with `psutil` (CPU/RAM/disk) and NVML (`nvidia-ml-py`) for GPU stats, then broadcasts them to the browser over ComfyUI's existing websocket (`cam.monitor` event). Sampling pauses automatically when no browser tab is connected.
 - `web/monitor.js` renders the pills, injects them next to the settings buttons in the top menu bar (with fallbacks for other frontend layouts), and exposes the settings. The refresh rate is synced to the backend via `PATCH /advanced_monitor/config`.
-
-## License
-
-MIT
